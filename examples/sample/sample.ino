@@ -42,14 +42,14 @@ void setup(void)
     }
 
   ret = SpresenseIMU.initialize(SAMPLINGRATE, ADRANGE, GDRANGE, FIFO_DEPTH);
-  if (ret)
+  if (!ret)
     {
       SpresenseIMU.end();
       return;
     }
 
   ret = SpresenseIMU.start();
-  if (ret)
+  if (!ret)
     {
       SpresenseIMU.finalize();
       SpresenseIMU.end();

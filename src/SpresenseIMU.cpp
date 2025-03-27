@@ -56,14 +56,14 @@ int SpresenseImuClass::begin()
       return ret;
     }
 
-  printf("board_cxd5602pwbimu_initialize: OK\n");
-
   fd = open(CXD5602PWBIMU_DEVPATH, O_RDONLY);
   if (fd < 0)
     {
       printf("ERROR: Device %s open failure. %d\n", CXD5602PWBIMU_DEVPATH, errno);
       return errno;
     }
+
+  return true;
 
 }
 
@@ -124,6 +124,9 @@ bool SpresenseImuClass::initialize(int rate, int adrange, int gdrange, int nfifo
       printf("ERROR: Set sampling rate failed. %d\n", errno);
       return false;
     }
+
+  return true;
+
 }
 
 /****************************************************************************
@@ -150,10 +153,10 @@ bool SpresenseImuClass::start()
   if (ret)
     {
       printf("ERROR: Enable failed. %d\n", errno);
-      return true;
+      return false;
     }
 
-  return false;
+  return true;
 
 }
 

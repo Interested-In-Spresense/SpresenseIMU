@@ -1,5 +1,5 @@
 /*
- *  ImuCore.ino - Raw date read sample for multi core.
+ *  ImuCore.ino - Raw data stored sample.
  *  Author Interested-In-Spresense
  *
  *  This library is free software; you can redistribute it and/or
@@ -29,7 +29,7 @@
  * Pre-processor Definitions
  ****************************************************************************/
 // IMU設定
-#define SAMPLINGRATE (60)    // Hz
+#define SAMPLINGRATE (1920)  // Hz
 #define ADRANGE       (4)    // G
 #define GDRANGE (    500)    // dps
 #define FIFO_DEPTH    (1)    // FIFO
@@ -42,6 +42,7 @@ enum error_no {
   BEGIN_ERROR = 0,
   INIT_ERROR,
   STRAT_ERROR,
+  GET_ERROR,
   SEND_ERROR
 };
 
@@ -74,30 +75,31 @@ void setup(void)
       SpresenseIMU.end();
       errorLoop(STRAT_ERROR);
     }
+
   sleep(1);
 }
 
+static int buffer_index = 0;
 /****************************************************************************
  * Loop
  ****************************************************************************/
 void loop()
 {
-  cxd5602pwbimu_data_t data;
-  if (SpresenseIMU.get(data)) {
+  const  int buffer_number = 4;
+  const  int data_number = SAMPLINGRATE/4;
+  static cxd5602pwbimu_data_t buffer[buffer_number][data_number];
 
-#ifndef SUBCORE_PRINT
-    int8_t msgid = 10;
-    int ret = MP.Send(msgid, (void*)MP.Virt2Phys(&data));
-    if (ret < 0) {
-      errorLoop(SEND_ERROR);
-    }
-    usleep(10*1000);
-#else
-    float timestamp = data.timestamp / 19200000.0f;
-    printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", timestamp, data.temp, data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
-#endif
-
+  if (!SpresenseIMU.get(&buffer[buffer_index][0], data_number)) {
+    errorLoop(GET_ERROR); 
   }
+
+  int8_t msgid = 10;
+  int ret = MP.Send(msgid, (void*)MP.Virt2Phys(&buffer[buffer_index][0]));
+  if (ret < 0) {
+    errorLoop(SEND_ERROR);
+  }
+  buffer_index = (buffer_index+1) % buffer_number;
+
 }
 
 /****************************************************************************

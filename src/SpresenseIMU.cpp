@@ -42,6 +42,7 @@
 
 #define itemsof(a) (sizeof(a)/sizeof(a[0]))
 
+const int device_timeout = 1000;
 
 /****************************************************************************
  * begin
@@ -83,13 +84,6 @@ bool SpresenseImuClass::initialize(int rate, int adrange, int gdrange, int nfifo
   int ret;
   cxd5602pwbimu_range_t range;
 
-  outbuf = (cxd5602pwbimu_data_t *)malloc(sizeof(cxd5602pwbimu_data_t) * rate);
-  if (outbuf == NULL)
-    {
-      printf("ERROR: Output buffer allocation failed.\n");
-      return false;
-    }
-
   /*
    * Set sampling rate. Available values (Hz) are below.
    *
@@ -117,7 +111,7 @@ bool SpresenseImuClass::initialize(int rate, int adrange, int gdrange, int nfifo
    * Increasing this value will reduce the frequency with which data is
    * received.
    */
-
+  fifo_depth = nfifos;
   ret = ioctl(fd, SNIOC_SFIFOTHRESH, nfifos);
   if (ret)
     {
@@ -134,7 +128,6 @@ bool SpresenseImuClass::initialize(int rate, int adrange, int gdrange, int nfifo
  ****************************************************************************/
 void SpresenseImuClass::finalize()
 {
-  free(outbuf);
 }
 
 /****************************************************************************
@@ -143,12 +136,9 @@ void SpresenseImuClass::finalize()
 bool SpresenseImuClass::start()
 {
 
-  memset(outbuf, 0, sizeof(1));
-
   /*
    * Start sensing, user can not change the all of configurations.
    */
-
   int ret = ioctl(fd, SNIOC_ENABLE, 1);
   if (ret)
     {
@@ -181,8 +171,19 @@ bool SpresenseImuClass::stop()
  ****************************************************************************/
 bool SpresenseImuClass::get(cxd5602pwbimu_data_t& data)
 {
-  int ret = read(fd, &data, sizeof(data));
-  if (ret != sizeof(data)) return false;
+  struct pollfd fds;
+  fds.fd     = fd;
+  fds.events = POLLIN;
+
+  int ret = poll(&fds, 1, device_timeout);
+  if (ret <= 0)
+    {
+      puts("Device timeout\n");
+      return false;
+    }
+
+  ret = read(fd,&data, sizeof(data)*fifo_depth);
+  if (ret != (int)sizeof(data)*fifo_depth) { return false; }
   return true;
 }
 
@@ -191,7 +192,7 @@ bool SpresenseImuClass::get(cxd5602pwbimu_data_t& data)
  ****************************************************************************/
 bool SpresenseImuClass::get(cxd5602pwbimu_data_t* ptr, int size)
 {
-  for(;size>0;size--,ptr++){
+  for(;size>0;size=size-fifo_depth,ptr++){
     if(!get(*ptr)) return false;
   }
 

@@ -46,7 +46,9 @@ public:
   bool get(cxd5602pwbimu_data_t*, int);
 
 private:
+
   int fd;
+  int fifo_depth;
   cxd5602pwbimu_data_t* outbuf;
 
 };

@@ -42,10 +42,10 @@ m(_ _)m  工事中です。
 #### sample_multi
   Raw データをサブコアで取得して表示するサンプル。
 
-#### raw_stored
+#### rawStored
   高サンプリングレート（1920Hz）の raw データをSDカードに保存するサンプル。
 
-#### attitude_estimation
+#### Orientation
   AHRS使って姿勢推定するサンプル。
 
 #### Processingと連携したサンプル
@@ -53,7 +53,7 @@ m(_ _)m  工事中です。
 ##### sample
   Raw データの波形を表示するサンプル
   
-##### sample
+##### Orientation
   AHRS使って姿勢推定の結果を表示するサンプル
   
 

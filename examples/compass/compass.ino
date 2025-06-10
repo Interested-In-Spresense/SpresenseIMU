@@ -18,6 +18,7 @@
  */
 
 #include "SpresenseIMU.h"
+#include <MadgwickAHRS.h>
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -34,6 +35,8 @@
 
 pwbGyroData dataArray[MAX_CALIBRATION];
 pwbGyroData bias_vec;
+
+Madgwick MadgwickFilter;
 
 /****************************************************************************
  * calibration
@@ -53,7 +56,7 @@ int calibration()
         Serial.print("Count Down to start T :");
         for(int count_down_time = 3;count_down_time>=0;count_down_time--){
           Serial.print(count_down_time);
-        Serial.print(". ");
+          Serial.print(". ");
           sleep(1);
         }
         Serial.print("\nStart Calibration for ");
@@ -105,7 +108,7 @@ int calibration()
 /****************************************************************************
  * Setup
  ****************************************************************************/
-int test_num = 0;
+float baseAngle;
 void setup(void)
 {
   Serial.begin(115200);
@@ -125,6 +128,8 @@ void setup(void)
       return;
     }
 
+  MadgwickFilter.begin(SAMPLINGRATE);
+
   ret = SpresenseIMU.start();
   if (!ret)
     {
@@ -135,10 +140,15 @@ void setup(void)
 
   int num = calibration();
   SpresenseIMU.calcEarthsRotation(dataArray, num, &bias_vec);
-//  printf("bias_vec = ");
-//  bias_vec.print();
+  baseAngle  = SpresenseIMU.calcAngleFrX(dataArray[num],bias_vec);
 
-  test_num = num; //tentative.
+  pwbImuData imuData;
+  if (SpresenseIMU.get(imuData)) {
+    MadgwickFilter.updateIMU(imuData.data.gx*180/PI, imuData.data.gy*180/PI, imuData.data.gz*180/PI, imuData.data.ax, imuData.data.ay, imuData.data.az);
+    baseAngle -= MadgwickFilter.getYaw();
+  printf("baseAngle = %F\n",baseAngle);
+  }
+
 }
 
 /****************************************************************************
@@ -146,14 +156,13 @@ void setup(void)
  ****************************************************************************/
 void loop()
 {
-
-  // tentative.
-  for(int i=0;i<test_num;i++){
-    double heading = SpresenseIMU.calcAngleFrX(dataArray[i],bias_vec);
-    printf("Test %d angle to North from X Axis %.2f\n", i, heading);
-  }
-
-  exit(1);
+  pwbImuData imuData;
+  if (SpresenseIMU.get(imuData)) {
+    MadgwickFilter.updateIMU(imuData.data.gx*180/PI, imuData.data.gy*180/PI, imuData.data.gz*180/PI, imuData.data.ax, imuData.data.ay, imuData.data.az);
+    float angle  = MadgwickFilter.getYaw() - baseAngle;
+    if(angle<0) angle += 360.0;
+    printf("angle = %F\n", angle);
+  }  
 
 }
 

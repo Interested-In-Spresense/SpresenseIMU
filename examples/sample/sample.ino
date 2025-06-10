@@ -62,10 +62,12 @@ void setup(void)
  ****************************************************************************/
 void loop()
 {
-    cxd5602pwbimu_data_t data;
-    if (SpresenseIMU.get(data)) {
-      float timestamp = data.timestamp / 19200000.0f;
-      printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", timestamp, data.temp, data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
-    }
+  pwbImuData imuData;
+  if (SpresenseIMU.get(imuData)) {
+     imuData.print();
+/*    float timestamp = imuData.data.timestamp / 19200000.0f;
+    printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", timestamp, imuData.data.temp, imuData.data.ax, 
+            imuData.data.ay, imuData.data.az, imuData.data.gx, imuData.data.gy, imuData.data.gz);*/
+  }
 }
 

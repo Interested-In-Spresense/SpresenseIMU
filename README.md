@@ -30,11 +30,13 @@ m(_ _)m  工事中です。
 #### start
 #### stop
 #### get
-
+#### getAverage
+#### calcEarthsRotation
+#### calcAngleFrX
 
 
 -------------------------
-### サンプルコード（スタンドアローン）
+### サンプルコード
 
 #### compass
   ジャイロコンパスのサンプル。キャリブ後、x軸からの北の角度を表示。
@@ -54,12 +56,15 @@ m(_ _)m  工事中です。
 #### Orientation
   AHRS使って姿勢推定するサンプル。
 
+#### tilt
+  加速度センサを使った単純な傾きセンサのサンプル。
 
-### Processingと連携したサンプル
+#### Processingと連携したサンプル
 
-#### sample
+##### sample
   Raw データの波形を表示するサンプル
-
-#### Orientation
+  
+##### Orientation
   AHRS使って姿勢推定の結果を表示するサンプル
+  
 

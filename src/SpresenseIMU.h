@@ -74,7 +74,7 @@ struct pwbImuData {
     printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", (data.timestamp / 19200000.0f), data.temp, data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
   }
 
-  void printIum(){
+  void printImu(){
     printf("%F,%F,%F,%F,%F,%F\n", data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
   }
 

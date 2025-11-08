@@ -30,14 +30,6 @@ const int usbserial_baurate = 921600;
 
 const int imu_core = 1;
 
-struct Orientation {
-  float timestamp;
-  float temp;
-  float roll;
-  float pitch;
-  float yaw;
-};
-
 void setup()
 {
   int ret = 0;
@@ -57,20 +49,22 @@ void setup()
 void loop()
 {
   int8_t   msgid = 0;
-  Orientation* data;
+  pwbQuaternionData* data;
 
   int ret = MP.Recv(&msgid, &data, imu_core);
   if (ret >= 0) {
-    printf("%4.2F,%2.2F,%F,%F,%F\n", data->timestamp, data->temp, data->roll, data->pitch, data->yaw);
+    printf("%4.2F,%2.2F,%F,%F,%F,%F\n", data->timestamp, data->temp, data->q0, data->q1, data->q2, data->q3);
     UsbSerial.print(data->timestamp, 2);
     UsbSerial.print(",");
     UsbSerial.print(data->temp, 2);
     UsbSerial.print(",");
-    UsbSerial.print(data->roll);
+    UsbSerial.print(data->q0);
     UsbSerial.print(",");
-    UsbSerial.print(data->pitch);
+    UsbSerial.print(data->q1);
     UsbSerial.print(",");
-    UsbSerial.println(data->yaw);
+    UsbSerial.print(data->q2);
+    UsbSerial.print(",");
+    UsbSerial.println(data->q3);
   }
 }
 

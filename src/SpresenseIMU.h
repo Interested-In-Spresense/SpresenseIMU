@@ -32,9 +32,8 @@
 struct pwbImuData {
   cxd5602pwbimu_data_t data;
 
-  pwbImuData()
-    : data{0, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f} {}
-
+  pwbImuData() { memset(&data, 0, sizeof(data)); }
+	
   pwbImuData& operator+=(const pwbImuData& other) {
     data.timestamp = other.data.timestamp;
     data.temp += other.data.temp;
@@ -74,7 +73,7 @@ struct pwbImuData {
     printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", (data.timestamp / 19200000.0f), data.temp, data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
   }
 
-  void printImu(){
+  void printIum(){
     printf("%F,%F,%F,%F,%F,%F\n", data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
   }
 
@@ -92,7 +91,7 @@ struct pwbGyroData {
   double y;
   double z;
 
-  pwbGyroData():x(0),y(0),z(0){}
+  pwbGyroData() { memset(this, 0, sizeof(*this)); }
   
   pwbGyroData& operator=(const pwbImuData& other){
     x = other.data.gx;
@@ -102,9 +101,9 @@ struct pwbGyroData {
   }
 
   pwbGyroData& operator+=(const pwbGyroData& other){
-    x = other.x;
-    y = other.y;
-    z = other.z;
+    x += other.x;
+    y += other.y;
+    z += other.z;
     return *this; 
   }
 
@@ -112,6 +111,90 @@ struct pwbGyroData {
     printf("%F,%F,%F\n", x, y, z);
   }
 
+};
+
+struct pwbEulerData {
+  float roll;
+  float pitch;
+  float yaw;
+
+  pwbEulerData() { memset(this, 0, sizeof(*this)); }
+
+  pwbEulerData(float r, float p, float y)
+    : roll(r), pitch(p), yaw(y) {}
+
+  pwbEulerData& operator+=(const pwbEulerData& other) {
+    roll  += other.roll;
+    pitch += other.pitch;
+    yaw   += other.yaw;
+    return *this;
+  }
+
+  void print() const {
+    printf("%f,%f,%f\n", roll, pitch, yaw);
+  }
+};
+
+struct pwbQuaternionData {
+  float timestamp;
+  float temp;
+
+  float q0;
+  float q1;
+  float q2;
+  float q3;
+
+  // Identity quaternion by default
+  pwbQuaternionData() {
+    memset(this, 0, sizeof(*this));
+    q0 = 1.0f;  // Identity quaternion exception
+  }
+
+  // Init with values
+  pwbQuaternionData(float _q0, float _q1, float _q2, float _q3)
+    : timestamp(0), temp(0), q0(_q0), q1(_q1), q2(_q2), q3(_q3) {}
+
+  // Normalize quaternion
+  void normalize() {
+    float n = sqrtf(q0*q0 + q1*q1 + q2*q2 + q3*q3);
+    if (n == 0) { q0 = 1; q1 = q2 = q3 = 0; return; }
+    q0 /= n; q1 /= n; q2 /= n; q3 /= n;
+  }
+
+  // Quaternion multiplication (Hamilton product)
+  pwbQuaternionData operator*(const pwbQuaternionData& q) const {
+    return pwbQuaternionData(
+      q0*q.q0 - q1*q.q1 - q2*q.q2 - q3*q.q3,
+      q0*q.q1 + q1*q.q0 + q2*q.q3 - q3*q.q2,
+      q0*q.q2 - q1*q.q3 + q2*q.q0 + q3*q.q1,
+      q0*q.q3 + q1*q.q2 - q2*q.q1 + q3*q.q0
+    );
+  }
+
+  // Convert to Euler angles (deg)
+  pwbEulerData toEuler() const {
+    pwbEulerData e;
+
+    float sinr = 2.0f * (q0 * q1 + q2 * q3);
+    float cosr = 1.0f - 2.0f * (q1*q1 + q2*q2);
+    e.roll = atan2f(sinr, cosr);
+
+    float sinp = 2.0f * (q0 * q2 - q3 * q1);
+    e.pitch = fabsf(sinp) >= 1 ? copysignf(M_PI/2, sinp) : asinf(sinp);
+
+    float siny = 2.0f * (q0 * q3 + q1 * q2);
+    float cosy = 1.0f - 2.0f * (q2*q2 + q3*q3);
+    e.yaw = atan2f(siny, cosy);
+
+    e.roll  *= 180.0f/M_PI;
+    e.pitch *= 180.0f/M_PI;
+    e.yaw   *= 180.0f/M_PI;
+    return e;
+  }
+
+  void print() const {
+    printf("%f,%f,%f,%f\n", q0, q1, q2, q3);
+  }
 };
 
 /**************************************************************************

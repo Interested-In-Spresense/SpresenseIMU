@@ -21,14 +21,49 @@
 #include <MadgwickAHRS.h>
 Madgwick MadgwickFilter;
 
+#define USE_QUATERNION
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-// IMU設定
-#define SAMPLINGRATE (60)    // Hz
-#define ADRANGE       (4)    // G
-#define GDRANGE (    500)    // dps
-#define FIFO_DEPTH    (1)    // FIFO
+// IMU setting
+#define SAMPLINGRATE (60)   // Hz
+#define ADRANGE      (4)    // G
+#define GDRANGE      (500)  // dps
+#define FIFO_DEPTH   (1)    // FIFO
+
+/****************************************************************************
+ * Calibrate
+ ****************************************************************************/
+float gyroBias[3] = {0,0,0};
+
+void calibrateGyroBias(int ms = 2000) {
+  printf("Calibrating gyro bias... (keep still %d ms)\n", ms);
+
+  cxd5602pwbimu_data_t raw;
+  double sum[3] = {0,0,0};
+  int count = 0;
+  unsigned long start = millis();
+
+  while (millis() - start < (unsigned)ms) {
+    if (SpresenseIMU.get(raw)) {
+      sum[0] += raw.gx * 180/PI;
+      sum[1] += raw.gy * 180/PI;
+      sum[2] += raw.gz * 180/PI;
+      count++;
+    }
+    usleep(1000);
+  }
+
+  if (count > 0) {
+    gyroBias[0] = sum[0] / count;
+    gyroBias[1] = sum[1] / count;
+    gyroBias[2] = sum[2] / count;
+  }
+
+  printf("Gyro Bias (deg/s): %f, %f, %f\n",
+         gyroBias[0], gyroBias[1], gyroBias[2]);
+}
 
 /****************************************************************************
  * Setup
@@ -39,26 +74,27 @@ void setup(void)
   ret = SpresenseIMU.begin();
   if (ret < 0)
     {
-      printf("Spresense IMU begin.\n");
+      printf("Spresense IMU begin error!.\n");
       return;
     }
 
   ret = SpresenseIMU.initialize(SAMPLINGRATE, ADRANGE, GDRANGE, FIFO_DEPTH);
-  if (!ret)
-    {
-      SpresenseIMU.end();
-      return;
-    }
+  if (!ret) {
+    SpresenseIMU.end();
+    return;
+  }
 
   MadgwickFilter.begin(SAMPLINGRATE);
-  
+
   ret = SpresenseIMU.start();
-  if (!ret)
-    {
-      SpresenseIMU.finalize();
-      SpresenseIMU.end();
-      return;
-    }
+  if (!ret) {
+    SpresenseIMU.finalize();
+    SpresenseIMU.end();
+    return;
+  }
+
+  calibrateGyroBias(2000);
+
 }
 
 /****************************************************************************
@@ -66,15 +102,37 @@ void setup(void)
  ****************************************************************************/
 void loop()
 {
-    cxd5602pwbimu_data_t data;
-    if (SpresenseIMU.get(data)) {
-      float timestamp = data.timestamp / 19200000.0f;
-      MadgwickFilter.updateIMU(data.gx*180/PI, data.gy*180/PI, data.gz*180/PI, data.ax, data.ay, data.az);
-      float roll  = MadgwickFilter.getRoll();
-      float pitch = MadgwickFilter.getPitch();
-      float yaw   = MadgwickFilter.getYaw();      
-      printf("%4.2F,%4.2F,%F,%F,%F\n", timestamp, data.temp, roll, pitch, yaw);
-  
-    }
-}
+  cxd5602pwbimu_data_t data;
+  if (SpresenseIMU.get(data)) {
 
+    float timestamp = data.timestamp / 19200000.0f;
+
+    // Update Madgwick
+    MadgwickFilter.updateIMU(
+      data.gx * 180/PI,
+      data.gy * 180/PI,
+      data.gz * 180/PI,
+      data.ax, data.ay, data.az
+    );
+
+#ifdef USE_QUATERNION
+    // --- Quaternion ---
+    float q0 = MadgwickFilter.getQ0();
+    float q1 = MadgwickFilter.getQ1();
+    float q2 = MadgwickFilter.getQ2();
+    float q3 = MadgwickFilter.getQ3();
+
+    printf("%4.2F,%4.2F,%F,%F,%F,%F\n",
+           timestamp, data.temp, q0, q1, q2, q3);
+
+#else
+    // --- Euler ---
+    float roll  = MadgwickFilter.getRoll();
+    float pitch = MadgwickFilter.getPitch();
+    float yaw   = MadgwickFilter.getYaw();
+
+    printf("%4.2F,%4.2F,%F,%F,%F\n",
+           timestamp, data.temp, roll, pitch, yaw);
+#endif
+  }
+}

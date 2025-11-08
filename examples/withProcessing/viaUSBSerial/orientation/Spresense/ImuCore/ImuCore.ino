@@ -1,5 +1,5 @@
 /*
- *  ImuCore.ino - Raw date read sample for multi core.
+ *  ImuCore.ino - AHRS date read sample for multi core.
  *  Author Interested-In-Spresense
  *
  *  This library is free software; you can redistribute it and/or
@@ -31,8 +31,8 @@ Madgwick MadgwickFilter;
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
-// IMUê›íË
-#define SAMPLINGRATE  (60)    // Hz
+// IMU setting
+#define SAMPLINGRATE (120)    // Hz
 #define ADRANGE        (4)    // G
 #define GDRANGE      (500)    // dps
 #define FIFO_DEPTH     (1)    // FIFO
@@ -41,20 +41,45 @@ Madgwick MadgwickFilter;
 USER_HEAP_SIZE(64 * 1024); 
 #endif
 
-struct Orientation {
-  float timestamp;
-  float temp;
-  float roll;
-  float pitch;
-  float yaw;
-};
-
 enum error_no {
   BEGIN_ERROR = 0,
   INIT_ERROR,
   STRAT_ERROR,
   SEND_ERROR
 };
+
+/* For Caribration */
+float gyroBias[3] = {0, 0, 0};
+
+/****************************************************************************
+ * calibrate for GyroBias
+ ****************************************************************************/
+void calibrateGyroBias(int ms = 2000) {
+  printf("Please Stop for Caribration(%d ms)...\n", ms);
+
+  cxd5602pwbimu_data_t raw;
+  double sum[3] = {0, 0, 0};
+  int count = 0;
+  unsigned long start = millis();
+
+  while (millis() - start < (unsigned)ms) {
+    if (SpresenseIMU.get(raw)) {
+      sum[0] += raw.gx * 180 / PI;
+      sum[1] += raw.gy * 180 / PI;
+      sum[2] += raw.gz * 180 / PI;
+      count++;
+    }
+    usleep(1000);
+  }
+
+  if (count > 0) {
+    gyroBias[0] = sum[0] / count;
+    gyroBias[1] = sum[1] / count;
+    gyroBias[2] = sum[2] / count;
+  }
+
+  printf("Gyro Bias (deg/s): %f, %f, %f\n", gyroBias[0], gyroBias[1], gyroBias[2]);
+}
 
 /****************************************************************************
  * Setup
@@ -87,7 +112,13 @@ void setup(void)
       SpresenseIMU.end();
       errorLoop(STRAT_ERROR);
     }
+
   sleep(1);
+  
+  ledOn(LED0); ledOn(LED1); ledOn(LED2); ledOn(LED3);
+  calibrateGyroBias(2000);
+  ledOff(LED0); ledOff(LED1); ledOff(LED2); ledOff(LED3);
+
 }
 
 /****************************************************************************
@@ -96,24 +127,35 @@ void setup(void)
 void loop()
 {
   cxd5602pwbimu_data_t raw;
-  Orientation data;
+  pwbQuaternionData data;
+
   if (SpresenseIMU.get(raw)) {
+
+    float gx = raw.gx * 180/PI - gyroBias[0];
+    float gy = raw.gy * 180/PI - gyroBias[1];
+    float gz = raw.gz * 180/PI - gyroBias[2];
+
     data.timestamp = raw.timestamp / 19200000.0f;
     data.temp = raw.temp;
-    MadgwickFilter.updateIMU(raw.gx*180/PI, raw.gy*180/PI, raw.gz*180/PI, raw.ax, raw.ay, raw.az);
-    data.roll  = MadgwickFilter.getRoll();
-    data.pitch = MadgwickFilter.getPitch();
-    data.yaw   = MadgwickFilter.getYaw();      
-#ifndef SUBCORE_PRINT
+
+    MadgwickFilter.updateIMU(gx, gy, gz, raw.ax, raw.ay, raw.az);
+
+    data.q0 = MadgwickFilter.getQ0();
+    data.q1 = MadgwickFilter.getQ1();
+    data.q2 = MadgwickFilter.getQ2();
+    data.q3 = MadgwickFilter.getQ3();
+
     int8_t msgid = 10;
     int ret = MP.Send(msgid, (void*)MP.Virt2Phys(&data));
     if (ret < 0) {
       errorLoop(SEND_ERROR);
     }
-    usleep(10*1000);
-#else
+
+#ifdef SUBCORE_PRINT
     printf("%4.2F,%2.2F,%F,%F,%F\n", data.timestamp, data.temp, data.roll, data.pitch, data.yaw);
 #endif
+  
+    usleep(10*1000);
 
   }
 }

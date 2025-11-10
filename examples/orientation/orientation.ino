@@ -35,35 +35,44 @@ Madgwick MadgwickFilter;
 /****************************************************************************
  * Calibrate
  ****************************************************************************/
-float gyroBias[3] = {0,0,0};
+float gyroBias[3] = {0, 0, 0};
+float trueRate = 0;
 
 void calibrateGyroBias(int ms = 2000) {
-  printf("Calibrating gyro bias... (keep still %d ms)\n", ms);
+  printf("Please Stop for Caribration(%d ms)...\n", ms);
 
   cxd5602pwbimu_data_t raw;
-  double sum[3] = {0,0,0};
+  double sum[3] = {0, 0, 0};
   int count = 0;
+  float first_ts = 0;
+  float last_ts = 0;
   unsigned long start = millis();
 
   while (millis() - start < (unsigned)ms) {
     if (SpresenseIMU.get(raw)) {
-      sum[0] += raw.gx * 180/PI;
-      sum[1] += raw.gy * 180/PI;
-      sum[2] += raw.gz * 180/PI;
+      sum[0] += raw.gx * 180 / PI;
+      sum[1] += raw.gy * 180 / PI;
+      sum[2] += raw.gz * 180 / PI;
+      if(count==0) {
+        first_ts = (raw.timestamp  / 19200000.0f);
+      }else{
+        last_ts = (raw.timestamp  / 19200000.0f);
+      }
       count++;
     }
-    usleep(1000);
   }
 
   if (count > 0) {
     gyroBias[0] = sum[0] / count;
     gyroBias[1] = sum[1] / count;
     gyroBias[2] = sum[2] / count;
+    trueRate = 1.0f / ( (last_ts - first_ts) / count);
   }
 
-  printf("Gyro Bias (deg/s): %f, %f, %f\n",
-         gyroBias[0], gyroBias[1], gyroBias[2]);
+  printf("Gyro Bias (deg/s): %f, %f, %f\n", gyroBias[0], gyroBias[1], gyroBias[2]);
+  printf("Sampling Rate: %f\n", trueRate);
 }
+
 
 /****************************************************************************
  * Setup
@@ -84,8 +93,6 @@ void setup(void)
     return;
   }
 
-  MadgwickFilter.begin(SAMPLINGRATE);
-
   ret = SpresenseIMU.start();
   if (!ret) {
     SpresenseIMU.finalize();
@@ -93,7 +100,13 @@ void setup(void)
     return;
   }
 
+  sleep(1);
+  
+  ledOn(LED0); ledOn(LED1); ledOn(LED2); ledOn(LED3);
   calibrateGyroBias(2000);
+  ledOff(LED0); ledOff(LED1); ledOff(LED2); ledOff(LED3);
+
+  MadgwickFilter.begin(trueRate);
 
 }
 

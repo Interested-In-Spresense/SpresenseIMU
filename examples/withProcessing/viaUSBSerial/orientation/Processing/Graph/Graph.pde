@@ -29,7 +29,7 @@ ArrayList<Quat> quatLog = new ArrayList<>();
 ArrayList<PVector> eulerLog = new ArrayList<>(); // x=roll, y=pitch, z=yaw (degrees)
 
 void setup() {
-  size(1200, 600);
+  size(800, 800);
   println("Opening port: " + PORT_NAME);
   serial = new Serial(this, PORT_NAME, BAUD);
   serial.bufferUntil('\n');

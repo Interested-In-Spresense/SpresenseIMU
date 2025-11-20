@@ -32,12 +32,12 @@ Madgwick MadgwickFilter;
  * Pre-processor Definitions
  ****************************************************************************/
 // IMU setting
-#define SAMPLINGRATE   (60)    // Hz
+#define SAMPLINGRATE   (120)    // Hz
 #define ADRANGE         (4)    // G
 #define GDRANGE       (500)    // dps
 #define FIFO_DEPTH      (1)    // FIFO
 
-#define SENDDECIMATION (SAMPLINGRATE/30)    // Hz
+#define SENDDECIMATION (SAMPLINGRATE/20)    // Hz
 
 #ifdef SUBCORE
 USER_HEAP_SIZE(64 * 1024); 

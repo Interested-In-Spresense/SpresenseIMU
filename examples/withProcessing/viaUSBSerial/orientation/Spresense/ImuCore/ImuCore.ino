@@ -19,8 +19,12 @@
 #include <MP.h> 
 #include "SpresenseIMU.h"
 
+//#define USE_MADGWICK
+
+#ifdef USE_MADGWICK
 #include <MadgwickAHRS.h>
 Madgwick MadgwickFilter;
+#endif
 
 //#define SUBCORE_PRINT
 
@@ -128,7 +132,9 @@ void setup(void)
   calibrateGyroBias(2000);
   ledOff(LED0); ledOff(LED1); ledOff(LED2); ledOff(LED3);
 
+#ifdef USE_MADGWICK
   MadgwickFilter.begin(trueRate);
+#endif
 
 }
 
@@ -147,13 +153,16 @@ void loop()
     float gy = raw.gy * 180/PI - gyroBias[1];
     float gz = raw.gz * 180/PI - gyroBias[2];
 
+#ifdef USE_MADGWICK
     MadgwickFilter.updateIMU(gx, gy, gz, raw.ax, raw.ay, raw.az);
+#endif
 
     if(count>0) {
       count--;
       return;
     }
 
+#ifdef USE_MADGWICK
     data.timestamp = raw.timestamp / 19200000.0f;
     data.temp = raw.temp;
 
@@ -161,7 +170,18 @@ void loop()
     data.q1 = MadgwickFilter.getQ1();
     data.q2 = MadgwickFilter.getQ2();
     data.q3 = MadgwickFilter.getQ3();
-    
+#else
+
+    static float last_timestamp = 0;
+
+    pwbQuaternionData result;
+    SpresenseIMU.convQuaternion(result,raw,last_timestamp);
+    data = data * result;
+
+    last_timestamp = raw.timestamp / 19200000.0f;
+
+#endif
+
     int8_t msgid = 10;
     int ret = MP.Send(msgid, (void*)MP.Virt2Phys(&data));
     if (ret < 0) {

@@ -33,7 +33,7 @@ struct pwbImuData {
   cxd5602pwbimu_data_t data;
 
   pwbImuData() { memset(&data, 0, sizeof(data)); }
-	
+
   pwbImuData& operator+=(const pwbImuData& other) {
     data.timestamp = other.data.timestamp;
     data.temp += other.data.temp;
@@ -66,9 +66,9 @@ struct pwbImuData {
     data.ax   /= i;
     data.ay   /= i;
     data.az   /= i;
-    return *this;  
+    return *this;
   }
-  
+
   void print(){
     printf("%4.2F,%4.2F,%F,%F,%F,%F,%F,%F\n", (data.timestamp / 19200000.0f), data.temp, data.ax, data.ay, data.az, data.gx, data.gy, data.gz);
   }
@@ -92,19 +92,19 @@ struct pwbGyroData {
   double z;
 
   pwbGyroData() { memset(this, 0, sizeof(*this)); }
-  
+
   pwbGyroData& operator=(const pwbImuData& other){
     x = other.data.gx;
     y = other.data.gy;
     z = other.data.gz;
-    return *this; 
+    return *this;
   }
 
   pwbGyroData& operator+=(const pwbGyroData& other){
     x += other.x;
     y += other.y;
     z += other.z;
-    return *this; 
+    return *this;
   }
 
   void print(){
@@ -163,12 +163,18 @@ struct pwbQuaternionData {
 
   // Quaternion multiplication (Hamilton product)
   pwbQuaternionData operator*(const pwbQuaternionData& q) const {
-    return pwbQuaternionData(
+
+    pwbQuaternionData result(
       q0*q.q0 - q1*q.q1 - q2*q.q2 - q3*q.q3,
       q0*q.q1 + q1*q.q0 + q2*q.q3 - q3*q.q2,
       q0*q.q2 - q1*q.q3 + q2*q.q0 + q3*q.q1,
       q0*q.q3 + q1*q.q2 - q2*q.q1 + q3*q.q0
     );
+
+    result.timestamp = q.timestamp;
+    result.temp      = q.temp;
+
+    return result;
   }
 
   // Convert to Euler angles (deg)
@@ -222,6 +228,8 @@ public:
   bool get(pwbImuData&);
   bool get(pwbImuData*, int);
   bool getAverage(pwbImuData&, int);
+
+  void convQuaternion(pwbQuaternionData& data, const cxd5602pwbimu_data_t& raw, float prevTimestamp);
 
   int calcEarthsRotation(pwbGyroData* gavgs, int num, pwbGyroData *bias_out);
   double calcAngleFrX(pwbGyroData&, pwbGyroData&);

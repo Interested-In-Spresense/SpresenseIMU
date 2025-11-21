@@ -256,6 +256,37 @@ bool SpresenseImuClass::getAverage(pwbImuData& data, int count)
 }
 
 /****************************************************************************
+ * convert quaternion data
+ ****************************************************************************/
+void SpresenseImuClass::convQuaternion(pwbQuaternionData& data, const cxd5602pwbimu_data_t& raw, float prevTimestamp)
+{
+
+  double omega = sqrt(raw.gx*raw.gx + raw.gy*raw.gy + raw.gz*raw.gz);
+  float delta = (raw.timestamp / 19200000.0f) - prevTimestamp;
+
+  data.timestamp = raw.timestamp;
+  data.temp = raw.temp;
+
+  if (omega < 1e-12) {
+    data.q0 = 1.0;
+    data.q1 = data.q2 = data.q3 = 0.0;
+    return;
+  }
+
+  double theta = omega * delta;
+  double half  = theta * 0.5;
+  double s = sin(half) / omega;
+
+  data.q0 = cos(half);
+  data.q1 = raw.gx * s;
+  data.q2 = raw.gy * s;
+  data.q3 = raw.gz * s;
+
+  return;
+
+}
+
+/****************************************************************************
  * Calculate Earth`s rotation
  ****************************************************************************/
 #define EARTH_RATE   (2.0 * M_PI / 86164.098903691)

@@ -64,16 +64,24 @@ int SpresenseImuClass::begin()
       return errno;
     }
 
-  return true;
+  return 0;
 
 }
 
 /****************************************************************************
  * end
  ****************************************************************************/
-void SpresenseImuClass::end()
+bool SpresenseImuClass::end()
 {
-  close(fd);
+  int ret = close(fd);
+  if (ret < 0)
+  {
+    printf("ERROR: close failed (errno=%d: %s)\n", errno, strerror(errno));
+    return false;
+  }
+
+  return true;
+
 }
 
 /****************************************************************************
@@ -159,10 +167,10 @@ bool SpresenseImuClass::stop()
   if (ret)
     {
       printf("ERROR: Disable failed. %d\n", errno);
-      return true;
+      return false;
     }
 
-  return false;
+  return true;
 
 }
 

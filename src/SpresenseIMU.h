@@ -198,6 +198,23 @@ struct pwbQuaternionData {
     return e;
   }
 
+  void fromEuler(float roll, float pitch, float yaw) {
+
+    float cr = cosf(roll * 0.5f);
+    float sr = sinf(roll * 0.5f);
+    float cp = cosf(pitch * 0.5f);
+    float sp = sinf(pitch * 0.5f);
+    float cy = cosf(yaw * 0.5f);
+    float sy = sinf(yaw * 0.5f);
+
+    q0 = cr * cp * cy + sr * sp * sy;
+    q1 = sr * cp * cy - cr * sp * sy;
+    q2 = cr * sp * cy + sr * cp * sy;
+    q3 = cr * cp * sy - sr * sp * cy;
+
+    normalize(); // ensure unit quaternion
+  }
+
   void print() const {
     printf("%f,%f,%f,%f\n", q0, q1, q2, q3);
   }
@@ -214,7 +231,7 @@ public:
   ~SpresenseImuClass(){}
 
   int begin();
-  void end();
+  bool end();
 
   bool initialize(int, int, int, int);
   void finalize();

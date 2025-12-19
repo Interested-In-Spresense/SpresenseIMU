@@ -212,12 +212,13 @@ API一覧
 | **tilt** | 加速度による傾き検出 |
 
 ### **Processing連携** でのサンプル
- | PC上のProcessingで波形／姿勢を可視化 |
+ | PC上のProcessingで波形／姿勢／位置を可視化 |
 
 | サンプル | 内容 |
 |-----------|------|
 | **sample** | Raw データの波形をPC上のProcessingで表示するサンプル |
-| **Orientation** | 姿勢データをPC上のProcessingで可視化するサンプル|
+| **orientation** | 姿勢データをPC上のProcessingで可視化するサンプル|
+| **posithin** | 位置データをPC上のProcessingで可視化するサンプル|
 
 ## 🪶 保存データの表示ツール
 
